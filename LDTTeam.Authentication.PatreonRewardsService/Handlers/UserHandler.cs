@@ -101,6 +101,16 @@ public partial class UserHandler(
             await userRepository.CreateOrUpdateAsync(user);
             LogUnlinkedPatreonAccountPatreonidFromUserIdUseridUsername(logger, message.ProviderKey, user.UserId, user.Username);
         }
+        else
+        {
+            var userWithPatreonId = await userRepository.GetByPatreonIdAsync(message.ProviderKey);
+            if (userWithPatreonId != null)
+            {
+                LogFoundUserWithPatreonIdPatreonidWhenHandlingExternallogindisconnectedfromuserFor(logger, message.ProviderKey, message.UserId);
+                await Handle(message with { UserId = userWithPatreonId.UserId });
+                return;
+            }
+        }
     }
     
     [LoggerMessage(LogLevel.Error, "Received ExternalLoginConnectedToUser for non-existent user ID {userId}")]
