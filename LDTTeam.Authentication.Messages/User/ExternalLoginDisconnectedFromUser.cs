@@ -8,5 +8,5 @@ namespace LDTTeam.Authentication.Messages.User;
 public record ExternalLoginDisconnectedFromUser(
     Guid UserId,
     AccountProvider Provider,
-    string ProviderKey
-    ) : IMessage;
+    string ProviderKey,
+    bool Force = false) : IMessage;

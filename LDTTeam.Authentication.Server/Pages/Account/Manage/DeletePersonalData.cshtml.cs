@@ -1,12 +1,16 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using LDTTeam.Authentication.Messages.User;
+using LDTTeam.Authentication.Models.App.User;
 using LDTTeam.Authentication.Modules.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Wolverine;
+using Wolverine.Runtime.Batching;
 
 namespace LDTTeam.Authentication.Server.Pages.Account.Manage
 {
@@ -16,15 +20,18 @@ namespace LDTTeam.Authentication.Server.Pages.Account.Manage
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<DeletePersonalDataModel> _logger;
+        private readonly IMessageBus _bus;
 
         public DeletePersonalDataModel(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            ILogger<DeletePersonalDataModel> logger)
+            ILogger<DeletePersonalDataModel> logger,
+            IMessageBus bus)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
+            _bus = bus;
         }
 
         [BindProperty]
@@ -69,6 +76,17 @@ namespace LDTTeam.Authentication.Server.Pages.Account.Manage
                 }
             }
 
+            var logins = await _userManager.GetLoginsAsync(user);
+            foreach (var userLoginInfo in logins)
+            {
+                await _bus.PublishAsync(new ExternalLoginDisconnectedFromUser(
+                    Guid.Parse(user.Id),
+                    Enum.Parse<AccountProvider>(userLoginInfo.LoginProvider),
+                    userLoginInfo.ProviderKey,
+                    true
+                ));
+            }
+            
             IdentityResult result = await _userManager.DeleteAsync(user);
             string userId = await _userManager.GetUserIdAsync(user);
             if (!result.Succeeded)
@@ -76,6 +94,8 @@ namespace LDTTeam.Authentication.Server.Pages.Account.Manage
                 throw new InvalidOperationException($"Unexpected error occurred deleting user with ID '{userId}'.");
             }
 
+            await _bus.PublishAsync(new UserDeleted(Guid.Parse(userId)));
+            
             await _signInManager.SignOutAsync();
 
             _logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
