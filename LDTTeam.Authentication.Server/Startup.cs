@@ -7,6 +7,7 @@ using LDTTeam.Authentication.Utils.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -93,7 +94,12 @@ namespace LDTTeam.Authentication.Server
             {
                 app.UseExceptionHandler("/Error");
             }
-
+                        
+            app.UseCookiePolicy(new CookiePolicyOptions
+            {
+                Secure = CookieSecurePolicy.Always
+            });
+            
             app.UseStaticFiles();
 
             app.UseRouting();
